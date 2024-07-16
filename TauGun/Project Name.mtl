@@ -1,0 +1,23 @@
+newmtl Leather Wrap_220a1780-23fa-4de2-9c3f-64bea45767fe
+Kd 1.000 1.000 1.000
+d 1.000
+map_Kd 360_F_12022778_X1WJG2t9y2aIxoRMGqkzj0AGZZcpd5D0.jpg
+newmtl Rubber_18cd300e-a1e8-43ba-8df2-9347ffdff511
+Kd 0.310 0.310 0.310
+d 1.000
+newmtl Copper_1e687663-f91d-41a1-925e-c20dffc9dbf8
+Kd 0.722 0.451 0.200
+d 1.000
+newmtl Metal_22cd07fc-ea5b-4e78-bb6f-f4fd4b5882e5
+Kd 1.000 1.000 1.000
+d 1.000
+map_Kd imgonline-com-ua-TextureSeamless-SoqyTyt6HFG.jpg
+newmtl Crystal_7e73f3c6-6782-470c-9468-121de00b7864
+Kd 0.984 0.494 0.078
+d 1.000
+newmtl Glow_67bdffdc-da5d-4ece-98f0-79e3a452d8e7
+Kd 0.984 0.494 0.078
+d 1.000
+newmtl Arabella_6cbf14c6-248b-4963-8843-d6acddfba6a2
+Kd 1.000 0.843 0.000
+d 1.000

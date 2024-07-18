@@ -130,15 +130,15 @@ public class TauGun : NetworkBehaviour, IGunState
     }
     private IEnumerator ResetLineRenderer()
     {
-        yield return new WaitForSeconds(0.6f);
+        yield return new WaitForSeconds(2f);
         m_LineRenderer.positionCount = 0;
     }
     [ServerRpc(RequireOwnership = false)]
     private void UpdateEnergyServerRpc(float energy)
     {
-        print(Energy.Value + "Enerji degeri:  " + energy);
+        //print(Energy.Value + "Enerji degeri:  " + energy);
         Energy.Value = energy;
-        print(Energy.Value + "AA");
+        //print(Energy.Value + "AA");
     }
     private void Awake()
     {
@@ -147,7 +147,7 @@ public class TauGun : NetworkBehaviour, IGunState
     private void OnEnergyChanged(float oldEnergy, float newEnergy)
     {
         // Energy deðiþtiðinde yapýlacak iþlemler
-        Debug.Log($"Energy deðiþti: {oldEnergy} -> {newEnergy}");
+        //Debug.Log($"Energy deðiþti: {oldEnergy} -> {newEnergy}");
         ReflectClientRpc();
     }
     private Vector3 forward;
@@ -165,7 +165,7 @@ public class TauGun : NetworkBehaviour, IGunState
     [ClientRpc]
     private void RaycastShotClientRpc()
     {
-        if (Physics.Raycast(position, forward, out tempHit, 5000))
+        if (Physics.Raycast(position, forward, out tempHit, 500))
         {
             if (tempHit.collider.transform.TryGetComponent(out IDamagable damage))
             {
@@ -180,7 +180,7 @@ public class TauGun : NetworkBehaviour, IGunState
         float angle = 0;
         do
         {
-            if (Physics.Raycast(position, forward, out tempHit, 5000))
+            if (Physics.Raycast(position, forward, out tempHit, 500))
             {
 
                 if (m_LineRenderer.positionCount == 0)
@@ -189,7 +189,7 @@ public class TauGun : NetworkBehaviour, IGunState
                     m_LineRenderer.SetPosition(m_LineRenderer.positionCount - 1, position);
                 }
 
-                //StartCoroutine("ResetLineRenderer");
+                StartCoroutine("ResetLineRenderer");
                 isCastingRay = true;
 
                 if (tempHit.transform.CompareTag("Wall"))
@@ -200,6 +200,11 @@ public class TauGun : NetworkBehaviour, IGunState
                     reflectedVector = -Vector3.Reflect((position - tempHit.point).normalized, -tempHit.normal);
 
                     CheckBehindWall(position, forward, BurstMode);
+
+                    if (tempHit.transform.TryGetComponent(out PortalObject thePortalObject))
+                    {
+                        thePortalObject.OnTauShotOn();
+                    }
 
                 }
                 else if (tempHit.transform.CompareTag("Ground"))
@@ -215,7 +220,11 @@ public class TauGun : NetworkBehaviour, IGunState
                 }
                 else if (tempHit.transform.TryGetComponent(out IDamagable d))
                     d.TakeDamage(10);
-
+                else if (tempHit.transform.CompareTag("Target"))
+                {
+                    lastCollisionChangeColor = tempHit.transform.gameObject;
+                    ChangeColorTarget(UnityEngine.Color.red,lastCollisionChangeColor.GetComponent<PortalObject>().stayTime);
+                }
                 Debug.DrawLine(position, tempHit.point, UnityEngine.Color.magenta, 2f);
                 Debug.DrawRay(tempHit.point, reflectedVector, UnityEngine.Color.gray, 2f);
 
@@ -228,13 +237,27 @@ public class TauGun : NetworkBehaviour, IGunState
             else
                 isCastingRay = false;
         }
-        while (isCastingRay && Energy.Value > 0 && angle < 60);
+        while (isCastingRay && angle < 60);  // GROUND A ATINCA SONSUZ RAY DÖNÜYOR ONU BÝ EL ATARSIN 
+    }
+    private GameObject lastCollisionChangeColor;
+    private void ChangeColorTarget(Color32 color,float delay) => SetColorServerRpc(color,delay);
+
+    [ServerRpc]
+    private void SetColorServerRpc(Color32 color,float delay)
+    {
+        lastCollisionChangeColor.GetComponent<MeshRenderer>().material.color = color;
+        SetColorClientRpc(color,delay);                                                   
+    }
+    [ClientRpc]
+    private void SetColorClientRpc(Color32 color,float delay)
+    {                                                                          
+        lastCollisionChangeColor.GetComponent<MeshRenderer>().material.color = color;
     }
     private void CheckBehindWall(Vector3 pos,Vector3 dir, bool BurstMode)
     {
         if (BurstMode)
         {
-            var raycasts = Physics.RaycastAll(pos, dir, 2000);  // WALLBANG
+            var raycasts = Physics.RaycastAll(pos, dir, 200);  // WALLBANG
             for (int i = 0; i < raycasts.Length; i++)
             {
                 if (raycasts[i].collider.gameObject.layer == 6)

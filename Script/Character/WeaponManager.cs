@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
+using Unity.Collections;
 using Unity.Netcode;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -15,7 +17,20 @@ public class WeaponManager : NetworkBehaviour
     public GameObject cubePrefab;
 
     [SerializeField] NetworkVariable<Vector3> _startPoint;
-    
+    public static NetworkList<ulong> clientIdList = new NetworkList<ulong>();
+    public static List<GameObject> playerPrefabs = new List<GameObject>();
+
+    public NetworkVariable<Color> PlayerColor = new NetworkVariable<Color>();
+
+    // timer variables
+    private TextMeshProUGUI _timer;
+    public float timer = 0f;
+    public NetworkVariable<bool> startTimer = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    private void OnApplicationQuit()
+    {
+        clientIdList.Dispose();
+    }
     private void Initialize()
     {
         TauGun = GetComponentInChildren<TauGun>();
@@ -28,6 +43,7 @@ public class WeaponManager : NetworkBehaviour
     {
         PlayerColor.OnValueChanged += OnColorChanged;
         _startPoint.OnValueChanged += OnStartPointChanged;
+        _timer = GameObject.FindWithTag("Timer").GetComponent<TextMeshProUGUI>();
     }
     private void OnStartPointChanged(Vector3 old_startPoint, Vector3 new_startPoint)
     {
@@ -37,9 +53,21 @@ public class WeaponManager : NetworkBehaviour
     {
         GetComponent<MeshRenderer>().material.color = PlayerColor.Value;
     }
-    public static NetworkList<ulong> clientIdList = new NetworkList<ulong>();
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (!IsOwner)
+            return;
+
+        //if (collision.transform.CompareTag("FinishCollide"))
+        //{
+        //    startTimer.Value = false;
+        //}
+    }
     private void Start()
     {
+        Unity.Collections.NativeLeakDetection.Mode = NativeLeakDetectionMode.EnabledWithStackTrace;
+
         if (IsServer)
         {
             PlayerColor.Value = UnityEngine.Random.ColorHSV();
@@ -52,16 +80,16 @@ public class WeaponManager : NetworkBehaviour
             if (NetworkManager.Singleton.ConnectedClients.Count == 1)
                 Singleton_OnClientConnectedCallback(NetworkManager.Singleton.LocalClientId);
         }
+
         transform.position = _startPoint.Value;
 
-
     }
-    public NetworkVariable<Color> PlayerColor = new NetworkVariable<Color>();
     private void Singleton_OnClientConnectedCallback(ulong obj)
     {
         if (IsHost)
         {
             clientIdList.Add(obj);
+            playerPrefabs.Add(NetworkManager.ConnectedClients[obj].PlayerObject.gameObject);
             InstantiateCubeNetwork(obj);
         }
     }
@@ -71,7 +99,9 @@ public class WeaponManager : NetworkBehaviour
         if (clientIdList.Count == 1)
             spawnPoint = new Vector3(-10f, 1.77010012f, -0.319999993f);
         else if (clientIdList.Count == 2)
+        {
             spawnPoint = new Vector3(2.25999999f, 1.77010012f, -0.319999993f);
+        }
 
         GameObject cubeInstance = Instantiate(cubePrefab, spawnPoint, Quaternion.identity);
         NetworkObject networkObject = cubeInstance.GetComponent<NetworkObject>();
@@ -83,17 +113,28 @@ public class WeaponManager : NetworkBehaviour
         if (IsClient)
         {
             GetComponent<MeshRenderer>().material.color = PlayerColor.Value;
+            if(!IsHost)
+                startTimer.Value = true;
         }
+        if (IsHost && NetworkManager.ConnectedClients.Count == 2)
+                startTimer.Value = true;
     }
+    
+    
     private void Update()
     {
         if (!IsOwner)
-        {
             return;
-        }
+        if (IsHost && NetworkManager.ConnectedClients.Count == 2)
+                startTimer.Value = true;
+
         if (TauGun == null && GravityGun == null)
-        {
             Initialize();
+
+        if (startTimer.Value)
+        {
+            timer += Time.deltaTime;
+            _timer.text = timer.ToString("F2");
         }
         currentState.HandleInput();
        

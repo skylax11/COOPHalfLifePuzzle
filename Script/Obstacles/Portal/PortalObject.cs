@@ -1,4 +1,4 @@
-using System.Collections;
+    using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
@@ -8,12 +8,15 @@ public class PortalObject : NetworkBehaviour
     public List<GameObject> parkourList = new List<GameObject>();
     public GameObject cubePrefab;
     public bool hasSpawnedCube = false;
+    public bool letStay = false;
+    public bool letTauShot = false;
+    public bool activateWithPlayerCollision = false;
+    public float stayTime = 5f;
     private void OnCollisionEnter(Collision collision)
     {
         if (collision.transform.CompareTag("Dragable"))
         {
-            foreach(var item in parkourList)
-                item.SetActive(true);
+            SetParkourObjects(true);
 
             var ownerClientId = collision.transform.GetComponent<NetworkObject>().OwnerClientId;
             ulong tempId = 0;
@@ -21,7 +24,6 @@ public class PortalObject : NetworkBehaviour
 
             for (int i = 0; i < WeaponManager.clientIdList.Count; i++)
             {
-                print(ownerClientId + " clientýdlist : " + WeaponManager.clientIdList[i]);
                 if (WeaponManager.clientIdList[i] == ownerClientId)  // for 2-player co-op
                 {
                     tempId = WeaponManager.clientIdList[1 - i]; // if 0 then gets 1, if 1 then gets 0. Quite opposite.
@@ -36,10 +38,10 @@ public class PortalObject : NetworkBehaviour
     {
         if (collision.transform.CompareTag("Dragable"))
         {
-            foreach (var item in parkourList)
-                item.SetActive(true);
+            SetParkourObjects(false);
         }
     }
+    
     [ServerRpc(RequireOwnership = false)]
     private void InstantiateCubeNetworkServerRpc(ulong obj,int tempIndex)
     {
@@ -48,7 +50,7 @@ public class PortalObject : NetworkBehaviour
         hasSpawnedCube = true;
 
         Vector3 spawnPoint = Vector3.zero;
-        print(tempIndex);
+
         if (tempIndex == 0)
             spawnPoint = new Vector3(-10f, 1.77010012f, -0.319999993f);
         else if(tempIndex == 1)
@@ -57,5 +59,24 @@ public class PortalObject : NetworkBehaviour
         GameObject cubeInstance = Instantiate(cubePrefab, spawnPoint, Quaternion.identity);
         NetworkObject networkObject = cubeInstance.GetComponent<NetworkObject>();
         networkObject.SpawnWithOwnership(obj, true);
+    }
+    public void OnTauShotOn()
+    {
+        if (!letTauShot)
+            return;
+
+        SetParkourObjects(true);
+        if(!letStay)
+            StartCoroutine(ResetLineRenderer(stayTime));
+    }
+    private void SetParkourObjects(bool set)
+    {
+        foreach (var item in parkourList)
+            item.SetActive(set);
+    }
+    private IEnumerator ResetLineRenderer(float time)
+    {
+        yield return new WaitForSeconds(time);
+        SetParkourObjects(false);
     }
 }
